@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import mapImage from "./img/map.svg";
 import "./JourneyPicker.css";
 import CityOptions from "../CityOptions/CityOptions";
@@ -6,76 +6,68 @@ import DatesOptions from "../DatesOptions/DatesOptions";
 
 const initialUrl = "https://apps.kodim.cz/daweb/leviexpress/api/cities";
 const Url = "https://apps.kodim.cz/daweb/leviexpress/api/dates";
-const endUrl =
-  "https://apps.kodim.cz/daweb/leviexpress/api/journey?fromCity=…&toCity=…&date=…";
 
 export const JourneyPicker = ({ onJourneyChange }) => {
   const [cities, setCities] = useState([]);
   const [dates, setDates] = useState([]);
   const [end, setEnd] = useState([]);
 
-  useEffect(() => {
-    const fetchCities = async () => {
-      try {
-        const fetchedData = await fetch(initialUrl);
-        const dataJson = await fetchedData.json();
+  const cityFrom = useRef();
+  const cityTo = useRef();
+  const date = useRef();
 
-        setCities(dataJson.results);
-      } catch (err) {
-        setCities([]);
-        throw new Error(err);
-      }
-    };
+  const fetchDates = async () => {
+    try {
+      const fetchedData = await fetch(Url);
+      const dataJson = await fetchedData.json();
 
-    fetchCities();
+      setDates(dataJson.results);
+    } catch (err) {
+      setDates([]);
+      throw new Error(err);
+    }
+  };
 
-    return () => {
+  const fetchCities = async () => {
+    try {
+      const fetchedData = await fetch(initialUrl);
+      const dataJson = await fetchedData.json();
+
+      setCities(dataJson.results);
+    } catch (err) {
       setCities([]);
-    };
-  }, []);
+      throw new Error(err);
+    }
+  };
 
   useEffect(() => {
-    const fetchDates = async () => {
-      try {
-        const fetchedData = await fetch(Url);
-        const dataJson = await fetchedData.json();
-
-        setEnd(dataJson.results);
-      } catch (err) {
-        setEnd([]);
-        throw new Error(err);
-      }
-    };
-
+    fetchCities();
     fetchDates();
 
     return () => {
+      setCities([]);
       setDates([]);
     };
   }, []);
 
-  useEffect(() => {
-    const fetchEnd = async () => {
-      try {
-        const fetchedData = await fetch(endUrl);
-        const dataJson = await fetchedData.json();
-
-        setEnd(dataJson.results);
-      } catch (err) {
-        setEnd([]);
-        throw new Error(err);
-      }
-    };
-
-    fetchEnd();
-
-    return () => {
-      setEnd([]);
-    };
-  }, []);
-
   const handleSubmit = (event) => {
-    console.log("There is no city with code '{cities}' ");
+    event.preventDefault();
+
+    if (
+      !cityFrom.current.value ||
+      !cityTo.current.value ||
+      !date.current.value ||
+      cityFrom.current.value === cityTo.current.value
+    ) {
+      alert("Vyplňte prosím všechny údaje");
+      return;
+    }
+
+    onJourneyChange(
+      cityFrom.current.value,
+      cityTo.current.value,
+      date.current.value,
+    );
   };
 
   return (
@@ -85,19 +77,19 @@ export const JourneyPicker = ({ onJourneyChange }) => {
         <form className="journey-picker__form">
           <label>
             <div className="journey-picker__label">Odkud:</div>
-            <select>
+            <select ref={cityFrom}>
               <CityOptions cities={cities} />
             </select>
           </label>
           <label>
             <div className="journey-picker__label">Kam:</div>
-            <select>
+            <select ref={cityTo}>
               <CityOptions cities={cities} />
             </select>
           </label>
           <label>
             <div className="journey-picker__label">Datum:</div>
-            <select>
+            <select ref={date}>
               <option value="">Vyberte</option>
               <DatesOptions dates={dates} />
             </select>
@@ -106,9 +98,7 @@ export const JourneyPicker = ({ onJourneyChange }) => {
             <button
               className="btn"
               type="submit"
-              onClick={(event) => {
-                handleSubmit;
-              }}
+              onClick={handleSubmit}
               disabled={!setCities && !setDates}
             >
               Vyhledat spoj
